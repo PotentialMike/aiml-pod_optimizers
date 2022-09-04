@@ -10,7 +10,7 @@ def picker():
     # func_list = [Ackley, Beale, Easom, Himmelblau,
     #              HolderTable, Rastrigin]
     # func_list = [Ackley, Beale, Easom, Himmelblau]
-    func_list = [Himmelblau]
+    func_list = [Beale]
     return random.choice(func_list)()
 
 

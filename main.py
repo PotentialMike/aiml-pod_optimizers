@@ -1,13 +1,14 @@
 import random
 import numpy as np
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
+from matplotlib import animation
 import pandas as pd
 
 import lib.functions as fn
 
 MAX_POPULATION = 80
 CUTOFF = 40
-ROUNDS = 20
+ROUNDS = 100
 RADS = 1
 VELOCITY = 0.1
 
@@ -101,77 +102,79 @@ class ParticleSwarm(Optimizer):
     def __init__(self, test_function):
         Optimizer.__init__(self, test_function)
 
-        # constants
-        self.swarm_size = 10
-        self.intertia = 0.5   # w, inertial weight
-        self.cognitive = 0.1  # c1, cognitive coefficient
-        self.social = 0.1     # c2, social coefficient
-
     def optimize(self):
-        # initial instance variables
+        # initialize
+        self.swarm_size = 20
         self.initial_positions()
-        plt.scatter(self.positions[:, 0], self.positions[:, 1],
-                    marker="+", c='k')
-
-        # lay the foundation
         self.initial_velocities()
-        self.update_personal_bests()
-        self.update_global_best()
 
-        for round in range(1, 10):
-            self.update_positions()
+        # plt.scatter(self.positions[:, 0], self.positions[:, 1],
+        #             marker="x", c='k')
+
+        for round in range(1, ROUNDS):
+            self.fitness = self.evaluate_fitness(self.positions)
             self.update_personal_bests()
-            self.update_global_best
+            self.update_global_best()
+            self.update_velocities()
+            self.update_positions()
 
             plt.scatter(self.positions[:, 0], self.positions[:, 1],
                         marker="+", c='r', alpha=round/ROUNDS)
 
+            plt.scatter(self.global_best_position[0], self.global_best_position[1],
+                        marker="*", c='k')
+
+            # plt.scatter(self.my_best_position[:, 0], self.my_best_position[:, 1],
+            #             marker="*", c='b', alpha=round/ROUNDS)
+
     def update_positions(self):
-        self.update_velocity()
         self.positions = self.positions + self.velocity
 
-    def update_velocity(self):
+        # clip escapes
+        self.positions[self.positions > self.max] = self.max
+        self.positions[self.positions < self.min] = self.min
+
+    def update_velocities(self):
+        self.intertia = 0.5   # w, inertial weight
+        self.cognitive = 0.1  # c1, cognitive coefficient
+        self.social = 0.1     # c2, social coefficient
         r = np.random.rand(2)
-        self.velocity = self.intertia * self.velocity + \
-            self.cognitive * r[0] * (self.best_positions - self.positions) + \
-            self.social * r[1] * \
-            (self.global_best.reshape(-1, 1) - self.positions)
+
+        v1 = self.intertia * self.velocity
+        v2 = self.cognitive * r[0] * (self.my_best_position - self.positions)
+        v3 = self.social * r[1] * \
+            (self.global_best_position - self.positions)
+
+        self.velocity = v1 + v2 + v3
 
     def initial_positions(self):
         self.positions = np.random.uniform(
             low=self.min, high=self.max, size=(self.swarm_size, 2))
 
-        # clip any escaped mutations!
+        # clip escapes
         self.positions[self.positions > self.max] = self.max
         self.positions[self.positions < self.min] = self.min
 
-        self.best_positions = self.positions.copy()
-        self.best_fitness = self.evaluate_fitness(self.best_positions)
+        self.my_best_position = self.positions.copy()
+        self.my_best_fitness = self.evaluate_fitness(self.positions)
+        self.global_best_fitness = self.my_best_fitness.min()
+        self.global_best_position = self.positions[self.my_best_fitness.argmin(
+        )]
 
     def initial_velocities(self):
         self.velocity = np.random.randn(self.swarm_size, 2) * VELOCITY
 
     def update_personal_bests(self):
-        self.fitness = self.evaluate_fitness(self.positions)
-        print(np.shape(self.fitness))
         for index in range(self.swarm_size):
-            if (self.best_fitness[index] >= self.fitness[index]):
-                self.best_fitness[index] = self.fitness[index]
-                self.best_positions[index] = self.positions[index]
+            if (self.fitness[index] <= self.my_best_fitness[index]):
+                self.my_best_fitness[index] = self.fitness[index]
+                self.my_best_position[index] = self.positions[index]
 
     def update_global_best(self):
-        self.global_best = self.fitness.min()
-        self.global_best_position = \
-            self.positions[:, self.global_best.argmin()]
-
-    # def particle_best(self):
-    #     a = pd.DataFrame([[0, 0, 0], [9, 99, 999]])
-    #     b = pd.DataFrame([[5, 5, 5], [10, 10, 10]])
-    #     print(a[2])
-    #     b = np.where(a[2] < b[2], a, b)
-    #     print(b)
-
-        # temp = np.where(self.particle_bests[2] < self.population[2])
+        if (self.fitness.min() < self.global_best_fitness):
+            self.global_best_fitness = self.fitness.min()
+            self.global_best_position = \
+                self.positions[self.fitness.argmin()]
 
 
 def main():
@@ -187,7 +190,7 @@ def main():
     # vizualize
     plt.show()
     # plt.show(block=False)
-    # plt.pause(3)
+    # plt.pause(4)
     # plt.close()
 
 
